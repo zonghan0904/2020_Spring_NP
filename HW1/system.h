@@ -3,7 +3,12 @@
 
 # include "net_setting.h"
 
-int greeting(int fd);
+void Regist(char *name, char *email, char *passwd);
+void Login(char *name, char *passwd);
+void Logout();
+void Whoami();
+void Exit();
+int cmd_parser(char buf[], char delim[], char *cmd[]);
 int TCPechod(int fd);
 
 
