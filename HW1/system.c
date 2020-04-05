@@ -2,6 +2,11 @@
 
 # define OFFLINE 0
 # define ONLINE  1
+# define USER_EXIST 0
+# define USER_NON_EXIST 1
+
+int state = OFFLINE;
+int exist = USER_NON_EXIST;
 
 /* system message.*/
 char *REGISTER = "register";
@@ -11,6 +16,9 @@ char *WHOAMI = "whoami";
 char *EXIT = "exit";
 char *USAGE_REGIST = "Usage: register <username> <email> <password>\n";
 char *USAGE_LOGIN = "Usage: login <username> <password>\n";
+char *REGIST_SUCCESS = "Register successfully.\n";
+char *REGIST_FAIL = "Username is already used.\n";
+char LOGIN_SUCCESS[BUFSIZ];
 char *LOGIN_FAIL = "Login failed.\n";
 char *LOGIN_FIRST = "Please login first.\n";
 char *LOGOUT_FIRST = "Please logout first.\n";
@@ -35,6 +43,38 @@ int cmd_parser(char buf[], char delim[], char *cmd[]){
         ptr = strtok(NULL, delim);
     }
     return cmd_cnt;
+}
+
+int regist_callback(void *NotUsed, int argc, char **argv, char **azColName){
+    NotUsed = 0;
+    int i;
+
+    for (i = 0; i < argc; i++) {
+	if (argv[i]){
+	    exist = USER_EXIST;
+	    fprintf(stdout, "user found\n");
+	}
+    }
+
+    return 0;
+}
+
+int login_callback(void *data, int argc, char **argv, char **azColName){
+    int i;
+
+    for (i = 0; i < argc; i++) {
+	if (argv[i]){
+	    /*
+	    if (!strcmp((char *) data, argv[i])){
+		state = ONLINE;
+	    }
+	    else{
+		state = OFFLINE;
+	    }*/
+	}
+    }
+
+    return 0;
 }
 
 void Regist(char *name, char *email, char *passwd){
@@ -62,7 +102,6 @@ void Exit(){
  *------------------------------------------------------------------------
  */
 int TCPechod(int fd){
-    int state = OFFLINE;
     char buf[BUFSIZ];
     char *prompt = "% ";
     char delim[] = " ";
@@ -75,7 +114,6 @@ int TCPechod(int fd){
     sqlite3 *db;
     char *zErrmsg = 0;
     int rc;
-    char *sql;
 
     rc = sqlite3_open("users.db", &db);
     if(rc){
@@ -117,7 +155,46 @@ int TCPechod(int fd){
 		    send(fd, USAGE_REGIST, strlen(USAGE_REGIST), 0);
 		}
 		else{
+		    char *username = cmd[1];
+		    char *email = cmd[2];
+		    char *passwd = cmd[3];
+		    char sql[BUFSIZ];
 
+		    sprintf(sql, "SELECT Password FROM USERS WHERE Username = '%s';", username);
+		    rc = sqlite3_exec(db, (const char *)sql, regist_callback, 0, &zErrmsg);
+
+		    if (rc != SQLITE_OK){
+			fprintf(stderr, "Failed to select data\n");
+			fprintf(stderr, "SQL error: %s\n", zErrmsg);
+
+			sqlite3_free(zErrmsg);
+			sqlite3_close(db);
+
+			return 1;
+		    }
+
+		    if (exist == USER_EXIST){
+			send(fd, REGIST_FAIL, strlen(REGIST_FAIL), 0);
+		    }
+
+		    if (exist == USER_NON_EXIST){
+			sprintf(sql, "INSERT INTO USERS (Username, Email, Password) "\
+		    	    	 "VALUES ('%s', '%s', '%s' );", username, email, passwd);
+		    	rc = sqlite3_exec(db, (const char *)sql, 0, 0, &zErrmsg);
+
+		    	if (rc != SQLITE_OK){
+		    	    fprintf(stderr, "SQL error: %s\n", zErrmsg);
+
+		    	    sqlite3_free(zErrmsg);
+		    	    sqlite3_close(db);
+
+		    	    return 1;
+		    	}
+		    	else{
+		    	    send(fd, REGIST_SUCCESS, strlen(REGIST_SUCCESS), 0);
+		    	}
+		    }
+		    exist = USER_NON_EXIST;
 		}
 	    }
 
@@ -132,7 +209,32 @@ int TCPechod(int fd){
 			send(fd, LOGOUT_FIRST, strlen(LOGOUT_FIRST), 0);
 		    }
 		    else if (state == OFFLINE){
+			char *username = cmd[1];
+		    	char *email = cmd[2];
+		    	char *passwd = cmd[3];
+		    	char sql[BUFSIZ];
 
+		    	sprintf(sql, "SELECT Password FROM USERS WHERE Username = '%s';", username);
+		    	rc = sqlite3_exec(db, (const char *)sql, login_callback, (void *) passwd, &zErrmsg);
+
+		    	if (rc != SQLITE_OK){
+		    	    fprintf(stderr, "Failed to select data\n");
+		    	    fprintf(stderr, "SQL error: %s\n", zErrmsg);
+
+		    	    sqlite3_free(zErrmsg);
+		    	    sqlite3_close(db);
+
+		    	    return 1;
+		    	}
+
+			if (state == ONLINE){
+			    sprintf(LOGIN_SUCCESS, "Welcome, %s.", username);
+			    send(fd, LOGIN_SUCCESS, strlen(LOGIN_SUCCESS), 0);
+			}
+
+			if (state == OFFLINE){
+			    send(fd, LOGIN_FAIL, strlen(LOGIN_FAIL), 0);
+			}
 		    }
 		}
 	    }

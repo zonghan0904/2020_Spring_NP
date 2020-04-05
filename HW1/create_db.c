@@ -31,8 +31,8 @@ int main(int argc, char* argv[]) {
    sql = "CREATE TABLE USERS("  \
       "UID INTEGER PRIMARY KEY     AUTOINCREMENT," \
       "Username        TEXT    NOT NULL UNIQUE," \
-      "Email           TEXT    NOT NULL," \
-      "Password        TEXT    NOT NULL);";
+      "Email           TEXT    ," \
+      "Password        TEXT    );";
 
    /* Execute SQL statement */
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);

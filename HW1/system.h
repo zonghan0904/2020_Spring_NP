@@ -6,6 +6,7 @@
 
 int greeting(int fd);
 int cmd_parser(char buf[], char delim[], char *cmd[]);
+int regist_callback(void *NotUsed, int argc, char **argv, char **azColName);
 void Regist(char *name, char *email, char *passwd);
 void Login(char *name, char *passwd);
 void Logout();
