@@ -107,8 +107,11 @@ int TCPechod(int fd){
 
 	/* according to different command, take corresponding actions.*/
 	if (cmd_cnt){
+	    /* if there is only one command, strlen will take \0 into account.*/
+	    if (cmd_cnt == 1) cmd[0][strlen(cmd[0]) - 1] = 0;
+
 	    /* FOR register. */
-	    if (!strncmp(cmd[0], REGISTER, strlen(REGISTER))){
+	    if (!strcmp(cmd[0], REGISTER)){
 		/* TODO */
 		if (cmd_cnt != 4){
 		    send(fd, USAGE_REGIST, strlen(USAGE_REGIST), 0);
@@ -119,7 +122,7 @@ int TCPechod(int fd){
 	    }
 
 	    /* FOR login.*/
-	    if (!strncmp(cmd[0], LOGIN, strlen(LOGIN))){
+	    if (!strcmp(cmd[0], LOGIN)){
 		/* TODO */
 		if (cmd_cnt != 3){
 		    send(fd, USAGE_LOGIN, strlen(USAGE_LOGIN), 0);
@@ -135,7 +138,7 @@ int TCPechod(int fd){
 	    }
 
 	    /* FOR logout.*/
-	    if (!strncmp(cmd[0], LOGOUT, strlen(LOGOUT))){
+	    if (!strcmp(cmd[0], LOGOUT)){
 		/* TODO */
 		if (state == ONLINE){
 
@@ -146,7 +149,7 @@ int TCPechod(int fd){
 	    }
 
 	    /* FOR whoami.*/
-	    if (!strncmp(cmd[0], WHOAMI, strlen(WHOAMI))){
+	    if (!strcmp(cmd[0], WHOAMI)){
 		/* TODO */
 		if (state == ONLINE){
 
@@ -157,7 +160,7 @@ int TCPechod(int fd){
 	    }
 
 	    /* FOR exit.*/
-	    if (!strncmp(cmd[0], EXIT, strlen(EXIT))){
+	    if (!strcmp(cmd[0], EXIT)){
 		/* TODO */
 		break;
 	    }
