@@ -1,12 +1,14 @@
 # include "system.h"
 
+/* register / login state */
 # define OFFLINE 0
 # define ONLINE  1
 # define USER_EXIST 0
 # define USER_NON_EXIST 1
-
 int state = OFFLINE;
 int exist = USER_NON_EXIST;
+char current_user[BUFSIZ];
+char verify_passwd[BUFSIZ];
 
 /* system message.*/
 char *REGISTER = "register";
@@ -21,9 +23,12 @@ char *REGIST_FAIL = "Username is already used.\n";
 char LOGIN_SUCCESS[BUFSIZ];
 char *LOGIN_FAIL = "Login failed.\n";
 char *LOGIN_FIRST = "Please login first.\n";
+char LOGOUT_SUCCESS[BUFSIZ];
 char *LOGOUT_FIRST = "Please logout first.\n";
+char USER_NAME[BUFSIZ];
 
 
+/* welcome message to users.*/
 int greeting(int fd){
     char *msg = "********************************\n"
 		"** Welcome to the BBS server. **\n"
@@ -34,9 +39,9 @@ int greeting(int fd){
     }
 }
 
+/* parse the argument*/
 int cmd_parser(char buf[], char delim[], char *cmd[]){
     int cmd_cnt = 0;
-    int i;
     char *ptr = strtok(buf, delim);
     while (ptr != NULL){
         cmd[cmd_cnt++] = ptr;
@@ -45,6 +50,7 @@ int cmd_parser(char buf[], char delim[], char *cmd[]){
     return cmd_cnt;
 }
 
+/* register part's callback function, check whether the username exist.*/
 int regist_callback(void *NotUsed, int argc, char **argv, char **azColName){
     NotUsed = 0;
     int i;
@@ -52,50 +58,25 @@ int regist_callback(void *NotUsed, int argc, char **argv, char **azColName){
     for (i = 0; i < argc; i++) {
 	if (argv[i]){
 	    exist = USER_EXIST;
-	    fprintf(stdout, "user found\n");
 	}
     }
 
     return 0;
 }
 
+/* login part's callback function, will record the user's password in order to make a further check.*/
 int login_callback(void *data, int argc, char **argv, char **azColName){
     int i;
 
     for (i = 0; i < argc; i++) {
 	if (argv[i]){
-	    /*
-	    if (!strcmp((char *) data, argv[i])){
-		state = ONLINE;
-	    }
-	    else{
-		state = OFFLINE;
-	    }*/
+	    /* get the password of the current user in order to verify. */
+	    strcpy(verify_passwd, argv[i]);
 	}
     }
-
     return 0;
 }
 
-void Regist(char *name, char *email, char *passwd){
-
-}
-
-void Login(char *name, char *passwd){
-
-}
-
-void Logout(){
-
-}
-
-void Whoami(){
-
-}
-
-void Exit(){
-
-}
 
 /*------------------------------------------------------------------------
  * TCPechod - echo data until end of file
@@ -210,8 +191,7 @@ int TCPechod(int fd){
 		    }
 		    else if (state == OFFLINE){
 			char *username = cmd[1];
-		    	char *email = cmd[2];
-		    	char *passwd = cmd[3];
+		    	char *passwd = cmd[2];
 		    	char sql[BUFSIZ];
 
 		    	sprintf(sql, "SELECT Password FROM USERS WHERE Username = '%s';", username);
@@ -227,12 +207,13 @@ int TCPechod(int fd){
 		    	    return 1;
 		    	}
 
-			if (state == ONLINE){
-			    sprintf(LOGIN_SUCCESS, "Welcome, %s.", username);
+			if (!strcmp(passwd, verify_passwd)){
+			    sprintf(LOGIN_SUCCESS, "Welcome, %s.\n", username);
 			    send(fd, LOGIN_SUCCESS, strlen(LOGIN_SUCCESS), 0);
+			    state = ONLINE;
+			    strcpy(current_user, username);
 			}
-
-			if (state == OFFLINE){
+			else{
 			    send(fd, LOGIN_FAIL, strlen(LOGIN_FAIL), 0);
 			}
 		    }
@@ -243,7 +224,10 @@ int TCPechod(int fd){
 	    if (!strcmp(cmd[0], LOGOUT)){
 		/* TODO */
 		if (state == ONLINE){
-
+		    sprintf(LOGOUT_SUCCESS, "Bye, %s.\n", current_user);
+		    send(fd, LOGOUT_SUCCESS, strlen(LOGOUT_SUCCESS), 0);
+		    state = OFFLINE;
+		    current_user[0] = 0;
 		}
 		else if (state == OFFLINE){
 		    send(fd, LOGIN_FIRST, strlen(LOGIN_FIRST), 0);
@@ -254,7 +238,8 @@ int TCPechod(int fd){
 	    if (!strcmp(cmd[0], WHOAMI)){
 		/* TODO */
 		if (state == ONLINE){
-
+		    sprintf(USER_NAME, "%s\n", current_user);
+		    send(fd, USER_NAME, strlen(USER_NAME), 0);
 		}
 		else if (state == OFFLINE){
 		    send(fd, LOGIN_FIRST, strlen(LOGIN_FIRST), 0);
