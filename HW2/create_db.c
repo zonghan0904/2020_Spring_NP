@@ -11,28 +11,17 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName) {
    return 0;
 }
 
-int main(int argc, char* argv[]) {
-   sqlite3 *db;
-   char *zErrMsg = 0;
-   int rc;
-   char *sql;
-
+void create_db(int rc, char *sql, char *zErrMsg, sqlite3 *db){
    /* Open database */
    rc = sqlite3_open("users.db", &db);
 
    if(rc) {
       fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
       return(0);
-   } else {
+   }
+   else {
       fprintf(stdout, "Opened database successfully\n");
    }
-
-   /* Create SQL statement */
-   sql = "CREATE TABLE USERS("  \
-      "UID INTEGER PRIMARY KEY     AUTOINCREMENT," \
-      "Username        TEXT    NOT NULL UNIQUE," \
-      "Email           TEXT    NOT NULL," \
-      "Password        TEXT    NOT NULL);";
 
    /* Execute SQL statement */
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
@@ -44,5 +33,38 @@ int main(int argc, char* argv[]) {
       fprintf(stdout, "Table created successfully\n");
    }
    sqlite3_close(db);
+
+}
+
+int main(int argc, char* argv[]) {
+   sqlite3 *db;
+   char *zErrMsg = 0;
+   int rc;
+   char *sql;
+
+   /* Create SQL statement */
+   sql = "CREATE TABLE USERS("  \
+      "UID INTEGER PRIMARY KEY     AUTOINCREMENT," \
+      "Username        TEXT    NOT NULL UNIQUE," \
+      "Email           TEXT    NOT NULL," \
+      "Password        TEXT    NOT NULL);";
+   create_db(rc, sql, zErrMsg, db);
+
+   sql = "CREATE TABLE BOARDS("  \
+      "UID INTEGER PRIMARY KEY     AUTOINCREMENT," \
+      "Boardname       TEXT    NOT NULL UNIQUE," \
+      "Username        TEXT    NOT NULL);";
+   create_db(rc, sql, zErrMsg, db);
+
+   sql = "CREATE TABLE POSTS("  \
+      "UID INTEGER PRIMARY KEY     AUTOINCREMENT," \
+      "Title           TEXT    NOT NULL," \
+      "Author          TEXT    NOT NULL," \
+      "Content         TEXT    NOT NULL," \
+      "Boardname       TEXT    NOT NULL," \
+      "Comment         TEXT    ," \
+      "Date            TEXT    NOT NULL);";
+   create_db(rc, sql, zErrMsg, db);
+
    return 0;
 }
