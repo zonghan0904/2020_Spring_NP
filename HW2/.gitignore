@@ -1,3 +1,4 @@
 *.o
+*.db
 server
 create_db
