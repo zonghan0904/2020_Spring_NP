@@ -43,20 +43,20 @@ int main(int argc, char* argv[]) {
    char *sql;
 
    /* Create SQL statement */
-   sql = "CREATE TABLE USERS("  \
+   sql = "CREATE TABLE IF NOT EXISTS USERS("  \
       "UID INTEGER PRIMARY KEY     AUTOINCREMENT," \
       "Username        TEXT    NOT NULL UNIQUE," \
       "Email           TEXT    NOT NULL," \
       "Password        TEXT    NOT NULL);";
    create_db(rc, sql, zErrMsg, db);
 
-   sql = "CREATE TABLE BOARDS("  \
+   sql = "CREATE TABLE IF NOT EXISTS BOARDS("  \
       "UID INTEGER PRIMARY KEY     AUTOINCREMENT," \
       "Boardname       TEXT    NOT NULL UNIQUE," \
       "Username        TEXT    NOT NULL);";
    create_db(rc, sql, zErrMsg, db);
 
-   sql = "CREATE TABLE POSTS("  \
+   sql = "CREATE TABLE IF NOT EXISTS POSTS("  \
       "UID INTEGER PRIMARY KEY     AUTOINCREMENT," \
       "Title           TEXT    NOT NULL," \
       "Author          TEXT    NOT NULL," \

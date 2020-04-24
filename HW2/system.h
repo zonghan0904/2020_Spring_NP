@@ -23,6 +23,8 @@ int list_board_callback(void *NotUsed, int argc, char **argv, char **azColName);
 int list_post_callback(void *NotUsed, int argc, char **argv, char **azColName);
 int read_callback(void *NotUsed, int argc, char **argv, char **azColName);
 int delete_post_callback(void *NotUsed, int argc, char **argv, char **azColName);
+int update_post_callback(void *NotUsed, int argc, char **argv, char **azColName);
+int comment_callback(void *NotUsed, int argc, char **argv, char **azColName);
 char *get_date();
 void str_replace(char *target, const char *needle, const char *replacement);
 

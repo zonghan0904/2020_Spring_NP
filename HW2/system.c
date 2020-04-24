@@ -27,6 +27,8 @@ char *CREATE_POST = "create-post";
 char *LIST_BOARD = "list-board";
 char *LIST_POST = "list-post";
 char *DELETE_POST = "delete-post";
+char *UPDATE_POST = "update-post";
+char *COMMENT = "comment";
 char *READ = "read";/*}}}*/
 
 /* system message.*/
@@ -38,6 +40,8 @@ char *USAGE_LIST_BOARD = "Usage: list-board ##<key>\n";
 char *USAGE_LIST_POST = "Usage: list-post <board-name> ##<key>\n";
 char *USAGE_READ = "Usage: read <post-id>\n";
 char *USAGE_DELETE_POST = "delete-post <post-id>\n";
+char *USAGE_UPDATE_POST = "update-post <post-id> --title/content <new>\n";
+char *USAGE_COMMENT = "comment <post-id> <comment>\n";
 char *REGIST_SUCCESS = "Register successfully.\n";
 char *REGIST_FAIL = "Username is already used.\n";
 char LOGIN_SUCCESS[BUFSIZ];
@@ -54,9 +58,14 @@ char *LIST_POST_FAIL = "Board does not exist.\n";
 char *READ_FAIL = "Post does not exist.\n";
 char *DELETE_POST_SUCCESS = "Delete successfully.\n";
 char *DELETE_POST_FAIL = "Post does not exist.\n";
+char *UPDATE_POST_SUCCESS = "Update successfully.\n";
+char *UPDATE_POST_FAIL = "Post does not exist.\n";
+char *COMMENT_SUCCESS = "Comment successfully.\n";
+char *COMMENT_FAIL = "Post does not exist.\n";
 char *NOT_POST_OWNER = "Not the post owner.\n";
 char BOARD_MSG[BUFSIZ];
 char READ_MSG[BUFSIZ];
+char COMMENT_MSG[BUFSIZ];
 char POST_MSG[BUFSIZ];/*}}}*/
 
 /*------------------------------------------------------------------------
@@ -362,7 +371,8 @@ int TCPechod(int fd){
 		    }
 		    else{
 			if (cmd_cnt == 2){
-		    	    sprintf(sql, "SELECT * FROM POSTS;");
+			    str_replace(boardname, "\r", "");
+		    	    sprintf(sql, "SELECT * FROM POSTS WHERE Boardname = '%s';", boardname);
 		    	    sprintf(POST_MSG, "\t%s\t\t%s\t\t%s\t\t%s\n", "ID", "Title", "Author", "Date");
 		    	}
 		    	else if (cmd[2][0] == '#' && cmd[2][1] == '#'){
@@ -477,6 +487,158 @@ int TCPechod(int fd){
 			    else{
 				send(fd, DELETE_POST_SUCCESS, strlen(DELETE_POST_SUCCESS), 0);
 			    }
+		    	}
+
+			USER_NAME[0] = 0;
+		    	post_exist = BOARD_NON_EXIST;
+		    }
+		}
+	    } /* }}} */
+
+	    /* FOR update-post. */
+	    if (!strcmp(cmd[0], UPDATE_POST)){ /* {{{ */
+		/* TODO */
+		if (cmd_cnt < 4){
+		    send(fd, USAGE_UPDATE_POST, strlen(USAGE_UPDATE_POST), 0);
+		}
+		else{
+		    if (state == OFFLINE){
+			send(fd, LOGIN_FIRST, strlen(LOGIN_FIRST), 0);
+		    }
+		    else{
+			char *uid = cmd[1];
+			char *object = cmd[2];
+			char new_content[BUFSIZ] = {0};
+		    	int uid_num = atoi(uid);
+		    	char sql[BUFSIZ];
+			int wrong_cmd = 0;
+
+			if (!strcmp(object, "--title")){
+			    int i;
+			    for (i = 3; i < cmd_cnt; i++){
+				strcat(new_content, cmd[i]);
+				if (i != cmd_cnt - 1) strcat(new_content, " ");
+			    }
+			}
+			else if (!strcmp(object, "--content")){
+			    int i;
+			    for (i = 3; i < cmd_cnt; i++){
+				strcat(new_content, cmd[i]);
+				if (i != cmd_cnt - 1) strcat(new_content, " ");
+			    }
+			    str_replace(new_content, "<br>", "\n");
+			}
+			else{
+			    send(fd, USAGE_UPDATE_POST, strlen(USAGE_UPDATE_POST), 0);
+			    wrong_cmd = 1;
+			}
+
+		    	sprintf(sql, "SELECT * FROM POSTS WHERE UID = %d;", uid_num);
+		    	rc = sqlite3_exec(db, (const char *)sql, update_post_callback, 0, &zErrmsg);
+
+    		    	if (rc != SQLITE_OK){
+    		    		fprintf(stderr, "Failed to select data\n");
+    		    		fprintf(stderr, "SQL error: %s\n", zErrmsg);
+
+    		    		sqlite3_free(zErrmsg);
+    		    		sqlite3_close(db);
+
+    		    		return 1;
+    		    	}
+
+		    	if (post_exist == BOARD_NON_EXIST && wrong_cmd == 0){
+		    	    send(fd, UPDATE_POST_FAIL, strlen(UPDATE_POST_FAIL), 0);
+		    	}
+			else if (strcmp(USER_NAME, current_user)&& wrong_cmd == 0){
+			    send(fd, NOT_POST_OWNER, strlen(NOT_POST_OWNER), 0);
+			}
+		    	else{
+			    if (!strcmp(object, "--title"))
+				sprintf(sql, "UPDATE POSTS SET %s = '%s' WHERE UID = %d;", "Title", new_content, uid_num);
+			    else if (!strcmp(object, "--content"))
+				sprintf(sql, "UPDATE POSTS SET %s = '%s' WHERE UID = %d;", "Content", new_content, uid_num);
+			    else
+				sprintf(sql, "UPDATE POSTS SET %s = '%s' WHERE UID = %d;", "Content", new_content, 0);
+
+			    rc = sqlite3_exec(db, (const char *)sql, 0, 0, &zErrmsg);
+
+    		    	    if (rc != SQLITE_OK){
+    		    	    	fprintf(stderr, "Failed to select data\n");
+    		    	    	fprintf(stderr, "SQL error: %s\n", zErrmsg);
+
+    		    	    	sqlite3_free(zErrmsg);
+    		    	    	sqlite3_close(db);
+
+    		    	    	return 1;
+    		    	    }
+			    else if (wrong_cmd == 0){
+				send(fd, UPDATE_POST_SUCCESS, strlen(UPDATE_POST_SUCCESS), 0);
+			    }
+		    	}
+
+			USER_NAME[0] = 0;
+		    	post_exist = BOARD_NON_EXIST;
+		    }
+		}
+	    } /* }}} */
+
+	    /* FOR comment. */
+	    if (!strcmp(cmd[0], COMMENT)){ /* {{{ */
+		/* TODO */
+		if (cmd_cnt < 3){
+		    send(fd, USAGE_COMMENT, strlen(USAGE_COMMENT), 0);
+		}
+		else{
+		    if (state == OFFLINE){
+			send(fd, LOGIN_FIRST, strlen(LOGIN_FIRST), 0);
+		    }
+		    else{
+			char *uid = cmd[1];
+			char buf[BUFSIZ] = {0};
+			char comment[BUFSIZ] = {0};
+		    	int uid_num = atoi(uid);
+		    	char sql[BUFSIZ];
+
+			int i;
+			for (i = 2; i < cmd_cnt; i++){
+			    strcat(buf, cmd[i]);
+			    if (i != cmd_cnt - 1) strcat(buf, " ");
+			}
+			sprintf(comment, "\t%s: %s\n", current_user, buf);
+			str_replace(comment, "\r", "");
+
+		    	sprintf(sql, "SELECT * FROM POSTS WHERE UID = %d;", uid_num);
+		    	rc = sqlite3_exec(db, (const char *)sql, comment_callback, 0, &zErrmsg);
+
+    		    	if (rc != SQLITE_OK){
+    		    		fprintf(stderr, "Failed to select data\n");
+    		    		fprintf(stderr, "SQL error: %s\n", zErrmsg);
+
+    		    		sqlite3_free(zErrmsg);
+    		    		sqlite3_close(db);
+
+    		    		return 1;
+    		    	}
+
+		    	if (post_exist == BOARD_NON_EXIST){
+		    	    send(fd, COMMENT_FAIL, strlen(COMMENT_FAIL), 0);
+		    	}
+		    	else{
+			    strcat(COMMENT_MSG, comment);
+			    str_replace(COMMENT_MSG, "\r", "");
+			    sprintf(sql, "UPDATE POSTS SET Comment = '%s' WHERE UID = %d;", COMMENT_MSG, uid_num);
+
+			    rc = sqlite3_exec(db, (const char *)sql, 0, 0, &zErrmsg);
+
+    		    	    if (rc != SQLITE_OK){
+    		    	    	fprintf(stderr, "Failed to select data\n");
+    		    	    	fprintf(stderr, "SQL error: %s\n", zErrmsg);
+
+    		    	    	sqlite3_free(zErrmsg);
+    		    	    	sqlite3_close(db);
+
+    		    	    	return 1;
+    		    	    }
 		    	}
 
 		    	post_exist = BOARD_NON_EXIST;
@@ -728,7 +890,7 @@ int read_callback(void *NotUsed, int argc, char **argv, char **azColName){/* {{{
 	sprintf(buf, "--\n");
 	strcat(READ_MSG, buf);
 	if (argv[i+5]){
-	    sprintf(buf, "\t%s\n", argv[i+5]);
+	    sprintf(buf, "%s\n", argv[i+5]);
 	    strcat(READ_MSG, buf);
 	}
 
@@ -752,6 +914,40 @@ int delete_post_callback(void *NotUsed, int argc, char **argv, char **azColName)
 	}
     }
     str_replace(USER_NAME, "\r", "");
+
+    return 0;
+}/* }}} */
+
+/* update_post part's callback function, will update the post information.*/
+int update_post_callback(void *NotUsed, int argc, char **argv, char **azColName){/* {{{ */
+    NotUsed = 0;
+    int i;
+
+    for (i = 0; i < argc; i+=7) {
+	if (argv[i]){
+	    sprintf(USER_NAME, "%s", argv[i+2]);
+
+	    post_exist = BOARD_EXIST;
+	}
+    }
+    str_replace(USER_NAME, "\r", "");
+
+    return 0;
+}/* }}} */
+
+/* comment part's callback function, will update the post comment information.*/
+int comment_callback(void *NotUsed, int argc, char **argv, char **azColName){/* {{{ */
+    NotUsed = 0;
+    int i;
+
+    for (i = 0; i < argc; i+=7) {
+	if (argv[i]){
+	    sprintf(COMMENT_MSG, "%s", argv[i+5] ? argv[i+5] : "");
+
+	    post_exist = BOARD_EXIST;
+	}
+    }
+    str_replace(COMMENT_MSG, "\r", "");
 
     return 0;
 }/* }}} */
