@@ -241,7 +241,7 @@ int TCPechod(int fd){
 		/* TODO */
 		sqlite3_close(db);
 		close(fd);
-    		return 0;
+		return 0;
 	    }/*}}}*/
 
 	    /* FOR create_board.*/

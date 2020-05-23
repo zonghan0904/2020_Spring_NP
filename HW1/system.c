@@ -249,7 +249,9 @@ int TCPechod(int fd){
 	    /* FOR exit.*/
 	    if (!strcmp(cmd[0], EXIT)){
 		/* TODO */
-		break;
+		sqlite3_close(db);
+		close(fd);
+    		return 0;
 	    }
 	}
 
