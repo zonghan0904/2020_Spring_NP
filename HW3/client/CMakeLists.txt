@@ -10,10 +10,10 @@ project(nphw3)
 find_package(AWSSDK REQUIRED COMPONENTS s3)
 
 # The executable name and its sourcefiles.
-add_executable(client main.cpp net_setting.cpp)
+add_executable(client main.cpp net_setting.cpp aws_utils.cpp)
 
 # Build using the C++ standard version 11.
-set (CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 # The libraries used by your executable.
 target_link_libraries(client ${AWSSDK_LINK_LIBRARIES})

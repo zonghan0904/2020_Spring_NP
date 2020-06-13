@@ -96,12 +96,6 @@ int TCPechod(int fd){
     }
 
 
-    /* prompt the user to input the command.*/
-    if (send(fd, prompt, strlen(prompt), 0) <= 0){
-	printf("could send prompt to %d client.\n", fd);
-    }
-
-
     while (bytes = read(fd, buf, sizeof buf)){
 	/* check the whether the input data is received.*/
         if (bytes < 0){
@@ -746,11 +740,14 @@ int TCPechod(int fd){
 int greeting(int fd){ /* {{{ */
     char *msg = "********************************\n"
 		"** Welcome to the BBS server. **\n"
-		"********************************\n";
+		"********************************\n"
+		"% ";
 
     if (send(fd, msg, strlen(msg), 0) <= 0){
 	printf("could send greeting msg to %d client.\n", fd);
     }
+
+
 } /*}}}*/
 
 /* parse the argument*/
