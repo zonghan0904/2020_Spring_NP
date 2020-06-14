@@ -1,3 +1,6 @@
+# include <iostream>
+# include <map>
+# include <string>
 # include "system.h"
 
 /* publish/subscribe method
@@ -47,7 +50,10 @@ char *LIST_POST = "list-post";
 char *DELETE_POST = "delete-post";
 char *UPDATE_POST = "update-post";
 char *COMMENT = "comment";
-char *READ = "read";/*}}}*/
+char *READ = "read";
+char *LIST_SUB = "list-sub";
+char *SUBSCRIBE = "subscribe";
+char *UNSUBSCRIBE = "unsubscribe";/*}}}*/
 
 /* system message.*/
 char *USAGE_REGIST = "Usage: register <username> <email> <password>\n";/*{{{*/
@@ -57,9 +63,14 @@ char *USAGE_CREATE_POST = "Usage: create-post <board-name> --title <title> --con
 char *USAGE_LIST_BOARD = "Usage: list-board ##<key>\n";
 char *USAGE_LIST_POST = "Usage: list-post <board-name> ##<key>\n";
 char *USAGE_READ = "Usage: read <post-id>\n";
-char *USAGE_DELETE_POST = "delete-post <post-id>\n";
-char *USAGE_UPDATE_POST = "update-post <post-id> --title/content <new>\n";
-char *USAGE_COMMENT = "comment <post-id> <comment>\n";
+char *USAGE_DELETE_POST = "Usage: delete-post <post-id>\n";
+char *USAGE_UPDATE_POST = "Usage: update-post <post-id> --title/content <new>\n";
+char *USAGE_COMMENT = "Usage: comment <post-id> <comment>\n";
+char *USAGE_SUBSCRIBE_B = "Usage: subscribe --board <board-name> --keyword <keyword>\n";
+char *USAGE_SUBSCRIBE_A = "Usage: subscribe --author <author-name> --keyword <keyword>\n";
+char *USAGE_UNSUBSCRIBE_B = "Usage: unsubscribe --board <board-name>\n";
+char *USAGE_UNSUBSCRIBE_A = "Usage: unsubscribe --author <author-name>\n";
+char *USAGE_LIST_SUB = "Usage: list-sub\n";
 char *REGIST_SUCCESS = "Register successfully.\n";
 char *REGIST_FAIL = "Username is already used.\n";
 char LOGIN_SUCCESS[BUFSIZ];
@@ -81,6 +92,9 @@ char *UPDATE_POST_FAIL = "Post does not exist.\n";
 char *COMMENT_SUCCESS = "Comment successfully.\n";
 char *COMMENT_FAIL = "Post does not exist.\n";
 char *NOT_POST_OWNER = "Not the post owner.\n";
+char *SUBSCRIBE_SUCCESS = "Subscribe successfully\n";
+char *SUBSCRIBE_FAIL = "Already subscribed\n";
+char *UNSUBSCRIBE_SUCCESS = "Unsubscribe successfully\n";
 char BOARD_MSG[BUFSIZ];
 char READ_MSG[BUFSIZ];
 char COMMENT_MSG[BUFSIZ];
@@ -97,7 +111,8 @@ int TCPechod(int fd){
     int cmd_cnt = 0;
     int bytes;
     char *cmd[BUFSIZ];
-
+    std::map<std::string, int> sub_list;
+    std::map<std::string, int>::iterator iter;
 
     /* open the database to load/store users data. */
     sqlite3 *db;
@@ -656,6 +671,194 @@ int TCPechod(int fd){
 		    	}
 
 		    	post_exist = BOARD_NON_EXIST;
+		    }
+		}
+	    } /* }}} */
+
+	    /* FOR subscribe.*/
+	    if (!strcmp(cmd[0], SUBSCRIBE)){ /* {{{ */
+		/* TODO */
+		if (cmd_cnt != 5){
+		    send(fd, USAGE_SUBSCRIBE_B, strlen(USAGE_SUBSCRIBE_B), 0);
+		    send(fd, USAGE_SUBSCRIBE_A, strlen(USAGE_SUBSCRIBE_A), 0);
+		}
+		else if (!strcmp(cmd[1], "--board")){
+		    if (strcmp(cmd[3], "--keyword") != 0){
+			send(fd, USAGE_SUBSCRIBE_B, strlen(USAGE_SUBSCRIBE_B), 0);
+		    }
+		    if (state == OFFLINE){
+			send(fd, LOGIN_FIRST, strlen(LOGIN_FIRST), 0);
+		    }
+		    else{
+			char *boardname = cmd[2];
+			char *keyword = cmd[4];
+    		    	char key[BUFSIZ] = "Board";
+			strcat(key, "_");
+			strcat(key, boardname);
+			strcat(key, "_");
+			strcat(key, keyword);
+			strcat(key, "_");
+
+			iter = sub_list.find(key);
+			if (iter != sub_list.end()){
+			    send(fd, SUBSCRIBE_FAIL, strlen(SUBSCRIBE_FAIL), 0);
+			}
+			else{
+			    sub_list[key] = 1;
+			    send(fd, SUBSCRIBE_SUCCESS, strlen(SUBSCRIBE_SUCCESS), 0);
+			}
+		    }
+		}
+		else if (!strcmp(cmd[1], "--author")){
+		    if (strcmp(cmd[3], "--keyword") != 0){
+			send(fd, USAGE_SUBSCRIBE_A, strlen(USAGE_SUBSCRIBE_A), 0);
+		    }
+		    if (state == OFFLINE){
+			send(fd, LOGIN_FIRST, strlen(LOGIN_FIRST), 0);
+		    }
+		    else{
+			char *author = cmd[2];
+			char *keyword = cmd[4];
+    		    	char key[BUFSIZ] = "Author";
+			strcat(key, "_");
+			strcat(key, author);
+			strcat(key, "_");
+			strcat(key, keyword);
+			strcat(key, "_");
+
+			iter = sub_list.find(key);
+			if (iter != sub_list.end()){
+			    send(fd, SUBSCRIBE_FAIL, strlen(SUBSCRIBE_FAIL), 0);
+			}
+			else{
+			    sub_list[key] = 1;
+			    send(fd, SUBSCRIBE_SUCCESS, strlen(SUBSCRIBE_SUCCESS), 0);
+			}
+		    }
+		}
+		else{
+		    send(fd, USAGE_SUBSCRIBE_B, strlen(USAGE_SUBSCRIBE_B), 0);
+		    send(fd, USAGE_SUBSCRIBE_A, strlen(USAGE_SUBSCRIBE_A), 0);
+		}
+	    } /* }}} */
+
+	    /* FOR unsubscribe.*/
+	    if (!strcmp(cmd[0], UNSUBSCRIBE)){ /* {{{ */
+		/* TODO */
+		if (cmd_cnt != 3){
+		    send(fd, USAGE_UNSUBSCRIBE_B, strlen(USAGE_UNSUBSCRIBE_B), 0);
+		    send(fd, USAGE_UNSUBSCRIBE_A, strlen(USAGE_UNSUBSCRIBE_A), 0);
+		}
+		else if (!strcmp(cmd[1], "--board")){
+		    if (state == OFFLINE){
+			send(fd, LOGIN_FIRST, strlen(LOGIN_FIRST), 0);
+		    }
+		    else{
+			char *boardname = cmd[2];
+			char tempboard[BUFSIZ];
+			strcpy(tempboard, boardname);
+			tempboard[strlen(tempboard)-1] = 0;
+
+			bool find = false;
+			for (iter = sub_list.begin(); iter != sub_list.end(); iter++){
+		    	    std::string key = iter -> first;
+			    std::string delimiter = "_";
+			    size_t pos = 0;
+			    std::string arg[3];
+			    int counter = 0;
+			    while ((pos = key.find(delimiter)) != std::string::npos){
+				arg[counter] = key.substr(0, pos);
+				key.erase(0, pos + delimiter.length());
+				counter++;
+			    }
+			    if((!strcmp(arg[0].c_str(), "Board")) && (!strcmp(arg[1].c_str(), tempboard))){
+				find = true;
+				sub_list.erase(iter);
+			    }
+		    	}
+			if (find){
+			    send(fd, UNSUBSCRIBE_SUCCESS, strlen(UNSUBSCRIBE_SUCCESS), 0);
+			}
+			else{
+			    char sendbuf[BUFSIZ];
+			    strcpy(sendbuf, "You haven't subscribed ");
+			    strcat(sendbuf, tempboard);
+			    strcat(sendbuf, "\n");
+			    send(fd, sendbuf, strlen(sendbuf), 0);
+			}
+		    }
+		}
+		else if (!strcmp(cmd[1], "--author")){
+		    if (state == OFFLINE){
+			send(fd, LOGIN_FIRST, strlen(LOGIN_FIRST), 0);
+		    }
+		    else{
+			char *author = cmd[2];
+			char tempauthor[BUFSIZ];
+			strcpy(tempauthor, author);
+			tempauthor[strlen(tempauthor)-1] = 0;
+
+			bool find = false;
+			for (iter = sub_list.begin(); iter != sub_list.end(); iter++){
+		    	    std::string key = iter -> first;
+			    std::string delimiter = "_";
+			    size_t pos = 0;
+			    std::string arg[3];
+			    int counter = 0;
+			    while ((pos = key.find(delimiter)) != std::string::npos){
+				arg[counter] = key.substr(0, pos);
+				key.erase(0, pos + delimiter.length());
+				counter++;
+			    }
+			    if((!strcmp(arg[0].c_str(), "Author")) && (!strcmp(arg[1].c_str(), tempauthor))){
+				find = true;
+				sub_list.erase(iter);
+			    }
+		    	}
+			if (find){
+			    send(fd, UNSUBSCRIBE_SUCCESS, strlen(UNSUBSCRIBE_SUCCESS), 0);
+			}
+			else{
+			    char sendbuf[BUFSIZ];
+			    strcpy(sendbuf, "You haven't subscribed ");
+			    strcat(sendbuf, tempauthor);
+			    strcat(sendbuf, "\n");
+			    send(fd, sendbuf, strlen(sendbuf), 0);
+			}
+		    }
+		}
+		else{
+		    send(fd, USAGE_UNSUBSCRIBE_B, strlen(USAGE_UNSUBSCRIBE_B), 0);
+		    send(fd, USAGE_UNSUBSCRIBE_A, strlen(USAGE_UNSUBSCRIBE_A), 0);
+		}
+	    } /* }}} */
+
+	    /* FOR list subscribe.*/
+	    if (!strcmp(cmd[0], LIST_SUB)){ /* {{{ */
+		/* TODO */
+		if (cmd_cnt > 1){
+		    send(fd, USAGE_LIST_SUB, strlen(USAGE_LIST_SUB), 0);
+		}
+		else{
+		    if (state == OFFLINE){
+			send(fd, LOGIN_FIRST, strlen(LOGIN_FIRST), 0);
+		    }
+		    else{
+			for (iter = sub_list.begin(); iter != sub_list.end(); iter++){
+		    	    std::string key = iter -> first;
+			    std::string delimiter = "_";
+			    size_t pos = 0;
+			    std::string arg[3];
+			    int counter = 0;
+			    char sendbuf[BUFSIZ];
+			    while ((pos = key.find(delimiter)) != std::string::npos){
+				arg[counter] = key.substr(0, pos);
+				key.erase(0, pos + delimiter.length());
+				counter++;
+			    }
+			    sprintf(sendbuf, "%s : %s : %s\n", arg[0].c_str(), arg[1].c_str(), arg[2].c_str());
+			    send(fd, sendbuf, strlen(sendbuf), 0);
+		    	}
 		    }
 		}
 	    } /* }}} */
