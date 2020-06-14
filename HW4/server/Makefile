@@ -1,7 +1,7 @@
 CC=g++
 CFLAGS=-g -Wall -ansi
 EXE=server
-LIB=-lsqlite3 -lrdkafka -lz -llz4 -L/usr/local/lib
+LIB=-lsqlite3 -lpthread -lrdkafka -lz -llz4 -L/usr/local/lib
 OBJ=main.o net_setting.o system.o producer.o consumer.o
 INC=-I./ -I/usr/include
 
@@ -23,4 +23,4 @@ DB:
 	./create_db
 
 clean:
-	rm -rf *.o ${EXE} users.db create_db
+	rm -rf *.o ${EXE} create_db *.db

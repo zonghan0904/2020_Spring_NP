@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <string.h>
 #include <ctype.h>
+# include "net_setting.h"
 
 
 /* Typical include path would be <librdkafka/rdkafka.h>, but this program
@@ -26,6 +27,6 @@ extern void stop_consume (int sig);
  */
 extern int is_printable (const char *buf, size_t size);
 
-void Subscribe (const char* brokers, const char* groupid, const char** topics, int topic_cnt);
+void Subscribe (const char* brokers, const char** topics, int fd, char* KEYWORD);
 
 #endif

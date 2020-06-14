@@ -27,5 +27,6 @@ int update_post_callback(void *NotUsed, int argc, char **argv, char **azColName)
 int comment_callback(void *NotUsed, int argc, char **argv, char **azColName);
 char *get_date();
 void str_replace(char *target, const char *needle, const char *replacement);
+void *handle_sub(void *data);
 
 # endif

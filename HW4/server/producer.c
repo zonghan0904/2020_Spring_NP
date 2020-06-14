@@ -61,11 +61,11 @@ void dr_msg_cb (rd_kafka_t *rk,
         if (rkmessage->err)
                 fprintf(stderr, "%% Message delivery failed: %s\n",
                         rd_kafka_err2str(rkmessage->err));
-        else
-                fprintf(stderr,
-                        "%% Message delivered (%zd bytes, "
-                        "partition %"PRId32")\n",
-                        rkmessage->len, rkmessage->partition);
+        // else
+                // fprintf(stderr,
+                //         "%% Message delivered (%zd bytes, "
+                //         "partition %"PRId32")\n",
+                //         rkmessage->len, rkmessage->partition);
 
         /* The rkmessage is destroyed automatically by librdkafka */
 }
@@ -77,7 +77,6 @@ void Publish (const char *brokers, const char *topic, char* buf) {
         rd_kafka_conf_t *conf;  /* Temporary configuration object */
         char errstr[512];       /* librdkafka API error reporting buffer */
 
-	printf("%s\n%s\n%s\n", brokers, topic, buf);
         /*
          * Create Kafka client configuration place-holder
          */
@@ -118,22 +117,22 @@ void Publish (const char *brokers, const char *topic, char* buf) {
         /* Signal handler for clean shutdown */
         signal(SIGINT, stop_produce);
 
-        fprintf(stderr,
-                "%% Type some text and hit enter to produce message\n"
-                "%% Or just hit enter to only serve delivery reports\n"
-                "%% Press Ctrl-C or Ctrl-D to exit\n");
+        // fprintf(stderr,
+        //         "%% Type some text and hit enter to produce message\n"
+        //         "%% Or just hit enter to only serve delivery reports\n"
+        //         "%% Press Ctrl-C or Ctrl-D to exit\n");
 
         size_t len = strlen(buf);
         rd_kafka_resp_err_t err;
 
-        if (buf[len-1] == '\n') /* Remove newline */
-                buf[--len] = '\0';
+        // if (buf[len-1] == '\n') /* Remove newline */
+        //         buf[--len] = '\0';
 
-        if (len == 0) {
-                /* Empty line: only serve delivery reports */
-                rd_kafka_poll(rk, 0/*non-blocking */);
-                return;
-        }
+        // if (len == 0) {
+        //         /* Empty line: only serve delivery reports */
+        //         rd_kafka_poll(rk, 0/*non-blocking */);
+        //         return;
+        // }
 
         /*
          * Send/Produce message.
@@ -185,9 +184,9 @@ retry:
                         goto retry;
                 }
         } else {
-                fprintf(stderr, "%% Enqueued message (%zd bytes) "
-                        "for topic %s\n",
-                        len, topic);
+                // fprintf(stderr, "%% Enqueued message (%zd bytes) "
+                //         "for topic %s\n",
+                //         len, topic);
         }
 
 
@@ -208,14 +207,14 @@ retry:
         /* Wait for final messages to be delivered or fail.
          * rd_kafka_flush() is an abstraction over rd_kafka_poll() which
          * waits for all messages to be delivered. */
-        fprintf(stderr, "%% Flushing final messages..\n");
+        // fprintf(stderr, "%% Flushing final messages..\n");
         rd_kafka_flush(rk, 10*1000 /* wait for max 10 seconds */);
 
         /* If the output queue is still not empty there is an issue
          * with producing messages to the clusters. */
-        if (rd_kafka_outq_len(rk) > 0)
-                fprintf(stderr, "%% %d message(s) were not delivered\n",
-                        rd_kafka_outq_len(rk));
+        // if (rd_kafka_outq_len(rk) > 0)
+        //         fprintf(stderr, "%% %d message(s) were not delivered\n",
+        //                 rd_kafka_outq_len(rk));
 
         /* Destroy the producer instance */
         rd_kafka_destroy(rk);

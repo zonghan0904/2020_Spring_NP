@@ -2,9 +2,15 @@
 # include <map>
 # include <string>
 # include "system.h"
+# include <pthread.h>
 
-/* publish/subscribe method
+extern "C"{
+    # include "producer.h"
+    # include "consumer.h"
+}
+
 char* BROKER = "localhost:9092";
+/* publish/subscribe method
 char* groupid = "0";
 char* topic = "1";
 char buf[BUFSIZ] = "It's a test!";
@@ -29,6 +35,9 @@ free(topics);
 # define USER_NON_EXIST 1
 # define BOARD_EXIST 0
 # define BOARD_NON_EXIST 1
+# define MAXIMUM_THREAD 100
+int FD;
+int thread_index = 0;
 int state = OFFLINE;
 int exist = USER_NON_EXIST;
 int board_exist = BOARD_NON_EXIST;
@@ -36,6 +45,7 @@ int post_exist = BOARD_NON_EXIST;
 char current_user[BUFSIZ];
 char current_board[BUFSIZ];
 char verify_passwd[BUFSIZ];
+char KEYWORD[BUFSIZ];
 
 /* command */
 char *REGISTER = "register";/*{{{*/
@@ -105,12 +115,14 @@ char POST_MSG[BUFSIZ];/*}}}*/
  *------------------------------------------------------------------------
  */
 int TCPechod(int fd){
+    FD = fd;
     char buf[BUFSIZ];
     char *prompt = "% ";
     char delim[] = " ";
     int cmd_cnt = 0;
     int bytes;
     char *cmd[BUFSIZ];
+    pthread_t t[MAXIMUM_THREAD];
     std::map<std::string, int> sub_list;
     std::map<std::string, int>::iterator iter;
 
@@ -691,13 +703,18 @@ int TCPechod(int fd){
 		    }
 		    else{
 			char *boardname = cmd[2];
-			char *keyword = cmd[4];
+			char *keytemp = cmd[4];
+			char keyword[BUFSIZ];
+			strcpy(keyword, keytemp);
+			keyword[strlen(keyword)-1] = 0;
     		    	char key[BUFSIZ] = "Board";
 			strcat(key, "_");
 			strcat(key, boardname);
 			strcat(key, "_");
 			strcat(key, keyword);
 			strcat(key, "_");
+
+			strcpy(KEYWORD, keyword);
 
 			iter = sub_list.find(key);
 			if (iter != sub_list.end()){
@@ -706,6 +723,11 @@ int TCPechod(int fd){
 			else{
 			    sub_list[key] = 1;
 			    send(fd, SUBSCRIBE_SUCCESS, strlen(SUBSCRIBE_SUCCESS), 0);
+
+			    strcpy(key, "Board_");
+			    strcat(key, boardname);
+			    pthread_create(&t[thread_index], NULL, handle_sub, (void*)key);
+			    thread_index += 1;
 			}
 		    }
 		}
@@ -718,13 +740,18 @@ int TCPechod(int fd){
 		    }
 		    else{
 			char *author = cmd[2];
-			char *keyword = cmd[4];
+			char *keytemp = cmd[4];
+			char keyword[BUFSIZ];
+			strcpy(keyword, keytemp);
+			keyword[strlen(keyword)-1] = 0;
     		    	char key[BUFSIZ] = "Author";
 			strcat(key, "_");
 			strcat(key, author);
 			strcat(key, "_");
 			strcat(key, keyword);
 			strcat(key, "_");
+
+			strcpy(KEYWORD, keyword);
 
 			iter = sub_list.find(key);
 			if (iter != sub_list.end()){
@@ -733,6 +760,11 @@ int TCPechod(int fd){
 			else{
 			    sub_list[key] = 1;
 			    send(fd, SUBSCRIBE_SUCCESS, strlen(SUBSCRIBE_SUCCESS), 0);
+
+			    strcpy(key, "Author_");
+			    strcat(key, current_user);
+			    pthread_create(&t[thread_index], NULL, handle_sub, (void*)key);
+			    thread_index += 1;
 			}
 		    }
 		}
@@ -931,6 +963,18 @@ int TCPechod(int fd){
     		    		return 1;
     		    	    }
     		    	    else{
+				char key[BUFSIZ];
+				char pub_msg[BUFSIZ];
+				sprintf(pub_msg, "*[%s] %s -by %s", boardname, title, current_user);
+				strcpy(key, "Board");
+				strcat(key, "_");
+				strcat(key, boardname);
+				Publish(BROKER, (const char*)key, pub_msg);
+				strcpy(key, "Author");
+				strcat(key, "_");
+				strcat(key, current_user);
+				Publish(BROKER, (const char*)key, pub_msg);
+
     		    		send(fd, CREATE_POST_SUCCESS, strlen(CREATE_POST_SUCCESS), 0);
     		    	    }
     		    	}
@@ -1217,4 +1261,15 @@ char *get_date(){/* {{{ */
     strcpy(ret, date);
 
     return ret;
+} /* }}} */
+
+/* multithread function to handle subscribe.*/
+void *handle_sub(void *data){/* {{{ */
+    char* topic = (char*) data;
+    char** topics;
+    topics = (char**) malloc(1*sizeof(char*));
+    memset(topics, 0, sizeof(topics));
+    topics[0] = (char*) malloc(BUFSIZ * sizeof(char));
+    topics[0] = topic;
+    Subscribe(BROKER, (const char**) topics, FD, KEYWORD);
 } /* }}} */

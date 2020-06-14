@@ -33,7 +33,7 @@
  */
 
 # include "consumer.h"
-
+# include <string.h>
 
 volatile sig_atomic_t run_consume = 1;
 
@@ -60,7 +60,7 @@ int is_printable (const char *buf, size_t size) {
 }
 
 
-void Subscribe (const char* brokers, const char* groupid, const char** topics, int topic_cnt) {
+void Subscribe (const char* brokers, const char** topics, int fd, char* KEYWORD) {
         rd_kafka_t *rk;          /* Consumer instance handle */
         rd_kafka_conf_t *conf;   /* Temporary configuration object */
         rd_kafka_resp_err_t err; /* librdkafka API error code */
@@ -71,6 +71,9 @@ void Subscribe (const char* brokers, const char* groupid, const char** topics, i
         // int topic_cnt;           /* Number of topics to subscribe to */
         rd_kafka_topic_partition_list_t *subscription; /* Subscribed topics */
         int i;
+	const char* groupid = "1";
+	int topic_cnt = 1;
+	char sendbuf[BUFSIZ];
 
         /*
          * Create Kafka client configuration place-holder
@@ -161,10 +164,10 @@ void Subscribe (const char* brokers, const char* groupid, const char** topics, i
                 return;
         }
 
-        fprintf(stderr,
-                "%% Subscribed to %d topic(s), "
-                "waiting for rebalance and messages...\n",
-                subscription->cnt);
+        // fprintf(stderr,
+        //         "%% Subscribed to %d topic(s), "
+        //         "waiting for rebalance and messages...\n",
+        //         subscription->cnt);
 
         rd_kafka_topic_partition_list_destroy(subscription);
 
@@ -178,48 +181,55 @@ void Subscribe (const char* brokers, const char* groupid, const char** topics, i
          * since a rebalance may happen at any time.
          * Start polling for messages. */
 
-        rd_kafka_message_t *rkm;
+        while (run_consume) {
+                rd_kafka_message_t *rkm;
 
-        rkm = rd_kafka_consumer_poll(rk, 100);
-        if (!rkm)
-                return; /* Timeout: no message within 100ms,
-                           *  try again. This short timeout allows
-                           *  checking for `run` at frequent intervals.
-                           */
+                rkm = rd_kafka_consumer_poll(rk, 100);
+                if (!rkm)
+                        continue; /* Timeout: no message within 100ms,
+                                   *  try again. This short timeout allows
+                                   *  checking for `run` at frequent intervals.
+                                   */
 
-        /* consumer_poll() will return either a proper message
-         * or a consumer error (rkm->err is set). */
-        if (rkm->err) {
-                /* Consumer errors are generally to be considered
-                 * informational as the consumer will automatically
-                 * try to recover from all types of errors. */
-                fprintf(stderr,
-                        "%% Consumer error: %s\n",
-                        rd_kafka_message_errstr(rkm));
+                /* consumer_poll() will return either a proper message
+                 * or a consumer error (rkm->err is set). */
+                if (rkm->err) {
+                        /* Consumer errors are generally to be considered
+                         * informational as the consumer will automatically
+                         * try to recover from all types of errors. */
+                        // fprintf(stderr,
+                        //         "%% Consumer error: %s\n",
+                        //         rd_kafka_message_errstr(rkm));
+                        rd_kafka_message_destroy(rkm);
+                        continue;
+                }
+
+                /* Proper message. */
+                // printf("Message on %s [%"PRId32"] at offset %"PRId64":\n",
+                //        rd_kafka_topic_name(rkm->rkt), rkm->partition,
+                //        rkm->offset);
+
+                /* Print the message key. */
+                if (rkm->key && is_printable(rkm->key, rkm->key_len))
+                        printf(" Key: %.*s\n",
+                               (int)rkm->key_len, (const char *)rkm->key);
+                else if (rkm->key)
+                        printf(" Key: (%d bytes)\n", (int)rkm->key_len);
+
+                /* Print the message value/payload. */
+                if (rkm->payload && is_printable(rkm->payload, rkm->len)){
+                        sprintf(sendbuf, "%.*s\n",
+                               (int)rkm->len, (const char *)rkm->payload);
+			char* ptr = strstr(sendbuf, KEYWORD);
+
+			// if (ptr)
+			    send(fd, sendbuf, strlen(sendbuf), 0);
+		}
+                else if (rkm->key)
+                        printf(" Value: (%d bytes)\n", (int)rkm->len);
+
                 rd_kafka_message_destroy(rkm);
-                return;
         }
-
-        /* Proper message. */
-        printf("Message on %s [%"PRId32"] at offset %"PRId64":\n",
-               rd_kafka_topic_name(rkm->rkt), rkm->partition,
-               rkm->offset);
-
-        /* Print the message key. */
-        if (rkm->key && is_printable(rkm->key, rkm->key_len))
-                printf(" Key: %.*s\n",
-                       (int)rkm->key_len, (const char *)rkm->key);
-        else if (rkm->key)
-                printf(" Key: (%d bytes)\n", (int)rkm->key_len);
-
-        /* Print the message value/payload. */
-        if (rkm->payload && is_printable(rkm->payload, rkm->len))
-                printf(" Value: %.*s\n",
-                       (int)rkm->len, (const char *)rkm->payload);
-        else if (rkm->key)
-                printf(" Value: (%d bytes)\n", (int)rkm->len);
-
-        rd_kafka_message_destroy(rkm);
 
 
         /* Close the consumer: commit final offsets and leave the group. */
@@ -230,6 +240,5 @@ void Subscribe (const char* brokers, const char* groupid, const char** topics, i
         /* Destroy the consumer */
         rd_kafka_destroy(rk);
 
-	return;
-
+        return;
 }
