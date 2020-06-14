@@ -1,23 +1,26 @@
 CC=g++
 CFLAGS=-g -Wall -ansi
 EXE=server
-LIB=-lsqlite3
-INCDIR=.
+LIB=-lsqlite3 -lrdkafka -lz -llz4 -L/usr/local/lib
+OBJ=main.o net_setting.o system.o producer.o consumer.o
+INC=-I./ -I/usr/include
 
 ALL:${EXE}
 
-${EXE}:main.o net_setting.o system.o
-	${CC} -o $@ main.o net_setting.o system.o ${LIB}
-	g++ create_db.cpp -o create_db -lsqlite3
+${EXE}:${OBJ}
+	${CC} -o $@ ${OBJ} ${LIB}
+	g++ create_db.cpp -o create_db ${LIB}
 	./create_db
 
-%.o: %.cpp
-	${CC} -I${INCDIR} ${CFLAGS} -c $<
+${OBJ}:
+	${CC} ${INC} ${CFLAGS} -std=c++11 -c *.cpp ${LIB}
+	gcc ${INC} ${CFLAGS} -std=gnu99 -c *.c ${LIB}
+
 
 .PHONY: clean
 
 DB:
-	g++ create_db.cpp -o create_db -lsqlite3
+	g++ create_db.cpp -o create_db ${LIB}
 	./create_db
 
 clean:

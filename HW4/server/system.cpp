@@ -1,5 +1,23 @@
 # include "system.h"
 
+/* publish/subscribe method
+char* BROKER = "localhost:9092";
+char* groupid = "0";
+char* topic = "1";
+char buf[BUFSIZ] = "It's a test!";
+
+char** topics;
+topics = (char**) malloc(1*sizeof(char*));
+memset(topics, 0, sizeof(topics));
+topics[0] = (char*) malloc(BUFSIZ * sizeof(char));
+topics[0] = topic;
+    Publish(BROKER, topic, buf);
+Subscribe(BROKER, groupid, (const char**)topics, 1);
+Subscribe(BROKER, groupid, (const char**)topics, 1);
+
+free(topics);
+ */
+
 
 /* register / login state */
 # define OFFLINE 0

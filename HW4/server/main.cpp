@@ -1,8 +1,13 @@
+# include <iostream>
 # include "net_setting.h"
 # include "system.h"
 
-int     errno;
+extern "C"{
+    # include "producer.h"
+    # include "consumer.h"
+}
 
+int     errno;
 
 #define QLEN              32    /* maximum connection queue length      */
 #define BUFSIZE         4096
