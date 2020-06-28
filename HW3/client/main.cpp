@@ -20,6 +20,9 @@ char current_user[BUFSIZ];
 char current_board[BUFSIZ];
 char verify_passwd[BUFSIZ];
 char *user_name;
+char prefix[BUFSIZ];
+char title[BUFSIZ];
+char content[BUFSIZ];
 
 /* command */
 char *REGISTER = "register";/*{{{*/
@@ -96,6 +99,51 @@ int cmd_parser(char buf[], char delim[], char *cmd[]){
     }
     return cnt;
 }
+/* get current date.*/
+char *get_date(){/* {{{ */
+    char date[10] = {0};
+    char *ret;
+
+    time_t now = time(0);
+    struct tm *ltm = localtime(&now);
+
+    sprintf(date, "%04d-%02d-%02d",1900 + ltm->tm_year, 1 + ltm->tm_mon, ltm->tm_mday);
+    strcpy(ret, date);
+
+    return ret;
+} /* }}} */
+/* replace substring pattern with new pattern.*/
+void str_replace(char *target, const char *needle, const char *replacement){/* {{{ */
+    char buffer[1024] = { 0 };
+    char *insert_point = &buffer[0];
+    const char *tmp = target;
+    size_t needle_len = strlen(needle);
+    size_t repl_len = strlen(replacement);
+
+    while (1) {
+        const char *p = strstr(tmp, needle);
+
+        /* walked past last occurrence of needle; copy remaining part */
+        if (p == NULL) {
+            strcpy(insert_point, tmp);
+            break;
+        }
+
+        /* copy part before needle */
+        memcpy(insert_point, tmp, p - tmp);
+        insert_point += p - tmp;
+
+        /* copy replacement string */
+        memcpy(insert_point, replacement, repl_len);
+        insert_point += repl_len;
+
+        /* adjust pointers, move on */
+        tmp = p + needle_len;
+    }
+
+    /* write altered string back to target */
+    strcpy(target, buffer);
+}/* }}} */
 
 pthread_mutex_t mutex1 = PTHREAD_MUTEX_INITIALIZER;
 
@@ -105,8 +153,22 @@ void* child(void *data){
 	rbuf[n] = 0;
         fputs(rbuf, stdout);
 	if (!strncmp(rbuf, REGIST_SUCCESS, strlen(REGIST_SUCCESS))){
-	    const Aws::String bucket_name = user_name;
+	    strcpy(prefix, "np20200628");
+	    strcat(prefix, user_name);
+	    const Aws::String bucket_name = prefix;
 	    create_bucket(bucket_name);
+	}
+	if (!strncmp(rbuf, CREATE_POST_SUCCESS, strlen(CREATE_POST_SUCCESS))){
+	    strcpy(prefix, "np20200628");
+	    strcat(prefix, current_user);
+	    // printf("bucketname = %s\n", prefix);
+	    const Aws::String bucket_name = prefix;
+	    strcpy(prefix, "np20200628");
+	    strcat(prefix, title);
+	    // printf("keyname = %s\n", prefix);
+	    const Aws::String key_name = prefix;
+	    const std::string cont = content;
+	    put_object(bucket_name, key_name, cont);
 	}
 
 	memset(rbuf, 0, sizeof(rbuf));
@@ -163,7 +225,7 @@ int main(int argc, char *argv[]) {
 
 		}
 		else{
-		    user_name = cmd[1];
+		    strcpy(current_user,cmd[1]);
 		}
 	    } /*}}}*/
 
@@ -214,6 +276,35 @@ int main(int argc, char *argv[]) {
 	    /* FOR create_post.*/
 	    if (!strcmp(cmd[0], CREATE_POST)){ /* {{{ */
 		/* TODO */
+		if (cmd_cnt < 6){
+
+		}
+		else{
+		    char *boardname = cmd[1];
+		    strcpy(title, "");
+		    strcpy(content, "");
+		    int i;
+		    /* concatenate the title string */
+		    for (i = 3; i < cmd_cnt; i++){
+		        if (strcmp(cmd[i], "--content")){
+			   strcat(title, cmd[i]);
+		        }
+		        else{
+			   break;
+		        }
+		        strcat(title, " ");
+		    }
+
+		    /* concatenate the content string */
+		    for (i = i + 1; i < cmd_cnt; i++){
+		        strcat(content, cmd[i]);
+
+		        if (i != cmd_cnt - 1) strcat(content, " ");
+		    }
+
+		    /* replace <br> sign to create a new line */
+		    str_replace(content, "<br>", "\n");
+		}
 	    } /* }}} */
 	}
 	strcat(wbuf, "\r\n");

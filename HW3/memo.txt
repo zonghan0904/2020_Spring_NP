@@ -1,0 +1,6 @@
+update credentials
+compile server & client
+clear s3 bucket & object
+adjust demo.sh's sleep_time
+execute server program
+execute demo.sh

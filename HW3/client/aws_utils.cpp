@@ -146,27 +146,32 @@ void get_object(const Aws::String &bucket_name, const Aws::String &key_name){
 
 
 bool put_object(const Aws::String &bucket_name, const Aws::String &key_name, const std::string &content){
-    Aws::Client::ClientConfiguration clientConfig;
-    // Set up request
-    Aws::S3::S3Client s3_client(clientConfig);
-    Aws::S3::Model::PutObjectRequest object_request;
+    Aws::SDKOptions options;
+    Aws::InitAPI(options);
+    {
+	Aws::Client::ClientConfiguration clientConfig;
+    	// Set up request
+    	Aws::S3::S3Client s3_client(clientConfig);
+    	Aws::S3::Model::PutObjectRequest object_request;
 
-    object_request.SetBucket(bucket_name);
-    object_request.SetKey(key_name);
-    const std::shared_ptr<Aws::IOStream> input_data =
-        Aws::MakeShared<Aws::StringStream>("");
-    *input_data << content.c_str();
-    object_request.SetBody(input_data);
+    	object_request.SetBucket(bucket_name);
+    	object_request.SetKey(key_name);
+    	const std::shared_ptr<Aws::IOStream> input_data =
+    	    Aws::MakeShared<Aws::StringStream>("");
+    	*input_data << content.c_str();
+    	object_request.SetBody(input_data);
 
-    // Put the string into the S3 object
-    auto put_object_outcome = s3_client.PutObject(object_request);
-    if (!put_object_outcome.IsSuccess()) {
-        auto error = put_object_outcome.GetError();
-        std::cout << "ERROR: " << error.GetExceptionName() << ": "
-            << error.GetMessage() << std::endl;
-        return false;
+    	// Put the string into the S3 object
+    	auto put_object_outcome = s3_client.PutObject(object_request);
+    	if (!put_object_outcome.IsSuccess()) {
+    	    auto error = put_object_outcome.GetError();
+    	    std::cout << "ERROR: " << error.GetExceptionName() << ": "
+    	        << error.GetMessage() << std::endl;
+    	    return false;
+    	}
+    	return true;
     }
-    return true;
+    Aws::ShutdownAPI(options);
 }
 
 

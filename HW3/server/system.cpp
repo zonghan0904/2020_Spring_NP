@@ -485,7 +485,7 @@ int TCPechod(int fd){
 			    }
 		    	}
 
-			USER_NAME[0] = 0;
+			// USER_NAME[0] = 0;
 		    	post_exist = BOARD_NON_EXIST;
 		    }
 		}
@@ -635,6 +635,7 @@ int TCPechod(int fd){
 
     		    	    	return 1;
     		    	    }
+			    send(fd, COMMENT_SUCCESS, strlen(COMMENT_SUCCESS), 0);
 		    	}
 
 		    	post_exist = BOARD_NON_EXIST;
